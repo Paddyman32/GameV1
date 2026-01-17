@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>First-Person Maze Treasure Hunt</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111;
+            color: #eee;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            user-select: none;
+        }
+        
+        header {
+            background: linear-gradient(to right, #2c3e50, #1a1a2e);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+        }
+        
+        h1 {
+            font-size: 2.4rem;
+            color: #3498db;
+            text-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            color: #ecf0f1;
+            opacity: 0.9;
+        }
+        
+        .game-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        canvas {
+            display: block;
+            background: #111;
+        }
+        
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .compass {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            border: 2px solid #3498db;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .compass-arrow {
+            font-size: 32px;
+            color: #e74c3c;
+            transform: rotate(0deg);
+            transition: transform 0.2s;
+        }
+        
+        .treasure-count {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 2px solid #f1c40f;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        
+        .treasure-icon {
+            color: #f1c40f;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #3498db;
+            max-width: 300px;
+        }
+        
+        .controls h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+        
+        .controls p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+            color: #ecf0f1;
+        }
+        
+        .key {
+            display: inline-block;
+            background: #2c3e50;
+            border: 1px solid #7f8c8d;
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin: 0 3px;
+            font-family: monospace;
+        }
+        
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            padding: 20px;
+            border-left: 2px solid #3498db;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .level-info {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #2980b9;
+        }
+        
+        .level-info h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .level-info p {
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        
+        .player-stats {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #27ae60;
+        }
+        
+        .player-stats h3 {
+            color: #2ecc71;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .stat:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .stat-name {
+            color: #bdc3c7;
+        }
+        
+        .stat-value {
+            color: #ecf0f1;
+            font-weight: bold;
+        }
+        
+        .message-box {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: auto;
+            border: 1px solid #e74c3c;
+            min-height: 120px;
+        }
+        
+        .message-box h3 {
+            color: #e74c3c;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        
+        #message {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            color: #ecf0f1;
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border: 1px solid #9b59b6;
+        }
+        
+        .instructions h3 {
+            color: #9b59b6;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .instructions li {
+            margin-bottom: 6px;
+            line-height: 1.3;
+        }
+        
+        .game-complete {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: all;
+        }
+        
+        .complete-content {
+            background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #f1c40f;
+            max-width: 600px;
+            box-shadow: 0 0 30px rgba(241, 196, 15, 0.5);
+        }
+        
+        .complete-content h2 {
+            font-size: 3rem;
+            color: #f1c40f;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(241, 196, 15, 0.7);
+        }
+        
+        .complete-content p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+        
+        #restart-button {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        
+        #restart-button:hover {
+            background: linear-gradient(to right, #2980b9, #3498db);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(52, 152, 219, 0.7);
+        }
+        
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 240px;
+                padding: 15px;
+            }
+            
+            .controls {
+                max-width: 250px;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 40%;
+                border-left: none;
+                border-top: 2px solid #3498db;
+            }
+            
+            .canvas-container {
+                height: 60%;
+            }
+            
+            .controls {
+                bottom: 10px;
+                left: 10px;
+                padding: 10px;
+                max-width: 200px;
+            }
+            
+            .compass, .treasure-count {
+                top: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>First-Person Maze Treasure Hunt</h1>
+        <div class="subtitle">Navigate the maze with WASD keys and mouse. Find all treasures to complete the level!</div>
+    </header>
+    
+    <div class="game-container">
+        <div class="canvas-container">
+            <canvas id="gameCanvas"></canvas>
+            
+            <div class="ui-overlay">
+                <div class="compass">
+                    <div class="compass-arrow" id="compassArrow">↑</div>
+                </div>
+                
+                <div class="treasure-count">
+                    <div class="treasure-icon">💎</div>
+                    <div id="treasureCounter">0/3</div>
+                </div>
+                
+                <div class="controls">
+                    <h3>Controls</h3>
+                    <p><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> - Move</p>
+                    <p><span class="key">Mouse</span> - Look around</p>
+                    <p><span class="key">R</span> - Reset position</p>
+                    <p><span class="key">ESC</span> - Release mouse</p>
+                </div>
+            </div>
+            
+            <div class="game-complete" id="gameComplete">
+                <div class="complete-content">
+                    <h2>Level Complete!</h2>
+                    <p>Congratulations! You found all the treasures in the maze.</p>
+                    <p id="completionStats">You collected 3 treasures in 0:00</p>
+                    <button id="restart-button">Play Again</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar">
+            <div class="level-info">
+                <h3>Maze Level 1</h3>
+                <p>Explore the dark maze to find hidden treasures. Avoid hitting the walls and try to navigate efficiently.</p>
+                <p>Treasures are hidden throughout the maze. Walk over them to collect.</p>
+            </div>
+            
+            <div class="player-stats">
+                <h3>Player Stats</h3>
+                <div class="stat">
+                    <span class="stat-name">Treasures Found:</span>
+                    <span class="stat-value" id="statTreasures">0/3</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-name">Distance Traveled:</span>
+                    <span class="stat-value" id="statDistance">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-name">Time:</span>
+                    <span class="stat-value" id="statTime">0:00</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-name">Position:</span>
+                    <span class="stat-value" id="statPosition">0, 0</span>
+                </div>
+            </div>
+            
+            <div class="message-box">
+                <h3>Messages</h3>
+                <div id="message">Welcome to the maze! Use WASD to move and mouse to look around. Find all 3 treasures to win!</div>
+            </div>
+            
+            <div class="instructions">
+                <h3>How to Play</h3>
+                <ul>
+                    <li>Move with W (forward), S (backward), A (left), D (right)</li>
+                    <li>Look around by moving your mouse</li>
+                    <li>Click on the game to lock your mouse pointer</li>
+                    <li>Find and collect all 3 treasures hidden in the maze</li>
+                    <li>Press ESC to release the mouse pointer</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const compassArrow = document.getElementById('compassArrow');
+        const treasureCounter = document.getElementById('treasureCounter');
+        const messageElement = document.getElementById('message');
+        const gameCompleteScreen = document.getElementById('gameComplete');
+        const restartButton = document.getElementById('restart-button');
+        const completionStats = document.getElementById('completionStats');
+        const statTreasures = document.getElementById('statTreasures');
+        const statDistance = document.getElementById('statDistance');
+        const statTime = document.getElementById('statTime');
+        const statPosition = document.getElementById('statPosition');
+        
+        // Set canvas size
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Game constants
+        const FOV = Math.PI / 3; // Field of view
+        const MAX_DEPTH = 16; // Maximum raycasting depth
+        const WALL_HEIGHT = 1; // Wall height
+        const PLAYER_HEIGHT = 0.5; // Player eye level
+        const PLAYER_SPEED = 0.025; // Player movement speed
+        const MOUSE_SENSITIVITY = 0.002; // Mouse look sensitivity
+        const CELL_SIZE = 1; // Size of each maze cell
+        
+        // Maze definition (1 = wall, 0 = path)
+        const maze = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1],
+            [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+            [1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+            [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+        
+        // Treasures positions (x, y)
+        let treasures = [
+            { x: 1.5, y: 1.5, collected: false },
+            { x: 6.5, y: 5.5, collected: false },
+            { x: 13.5, y: 8.5, collected: false }
+        ];
+        
+        // Player state
+        let player = {
+            x: 1.5,
+            y: 1.5,
+            angle: 0,
+            isMouseLocked: false,
+            distanceTraveled: 0,
+            lastX: 1.5,
+            lastY: 1.5
+        };
+        
+        // Game state
+        let gameState = {
+            treasuresFound: 0,
+            totalTreasures: 3,
+            gameComplete: false,
+            startTime: Date.now(),
+            currentTime: 0
+        };
+        
+        // Keyboard state
+        const keys = {};
+        
+        // Initialize mouse lock
+        canvas.addEventListener('click', () => {
+            if (!player.isMouseLocked) {
+                canvas.requestPointerLock();
+            }
+        });
+        
+        document.addEventListener('pointerlockchange', () => {
+            player.isMouseLocked = document.pointerLockElement === canvas;
+        });
+        
+        // Handle mouse movement for looking around
+        document.addEventListener('mousemove', (e) => {
+            if (!player.isMouseLocked) return;
+            
+            player.angle += e.movementX * MOUSE_SENSITIVITY;
+            
+            // Keep angle between 0 and 2π
+            if (player.angle < 0) player.angle += Math.PI * 2;
+            if (player.angle > Math.PI * 2) player.angle -= Math.PI * 2;
+            
+            updateCompass();
+        });
+        
+        // Handle keyboard input
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            // Reset player position
+            if (e.key === 'r' || e.key === 'R') {
+                resetPlayerPosition();
+            }
+            
+            // Escape releases mouse lock
+            if (e.key === 'Escape' && player.isMouseLocked) {
+                document.exitPointerLock();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+        
+        // Reset player to starting position
+        function resetPlayerPosition() {
+            player.x = 1.5;
+            player.y = 1.5;
+            player.angle = 0;
+            player.distanceTraveled = 0;
+            player.lastX = 1.5;
+            player.lastY = 1.5;
+            showMessage("Reset to starting position!");
+            updateCompass();
+        }
+        
+        // Update compass direction
+        function updateCompass() {
+            const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+            const angle = player.angle;
+            const index = Math.round(angle / (Math.PI / 4)) % 8;
+            compassArrow.textContent = '↑';
+            compassArrow.style.transform = `rotate(${angle}rad)`;
+        }
+        
+        // Show message to player
+        function showMessage(text) {
+            messageElement.textContent = text;
+        }
+        
+        // Update game stats
+        function updateStats() {
+            // Update treasure counter
+            treasureCounter.textContent = `${gameState.treasuresFound}/${gameState.totalTreasures}`;
+            statTreasures.textContent = `${gameState.treasuresFound}/${gameState.totalTreasures}`;
+            
+            // Update distance
+            const distance = Math.sqrt(
+                Math.pow(player.x - player.lastX, 2) + 
+                Math.pow(player.y - player.lastY, 2)
+            );
+            player.distanceTraveled += distance;
+            player.lastX = player.x;
+            player.lastY = player.y;
+            statDistance.textContent = `${player.distanceTraveled.toFixed(1)}m`;
+            
+            // Update time
+            const currentTime = Date.now();
+            const elapsedSeconds = Math.floor((currentTime - gameState.startTime) / 1000);
+            const minutes = Math.floor(elapsedSeconds / 60);
+            const seconds = elapsedSeconds % 60;
+            gameState.currentTime = elapsedSeconds;
+            statTime.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Update position
+            statPosition.textContent = `${player.x.toFixed(1)}, ${player.y.toFixed(1)}`;
+        }
+        
+        // Check for treasure collection
+        function checkTreasureCollection() {
+            for (let i = 0; i < treasures.length; i++) {
+                const treasure = treasures[i];
+                if (!treasure.collected) {
+                    const dx = player.x - treasure.x;
+                    const dy = player.y - treasure.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 0.5) {
+                        treasure.collected = true;
+                        gameState.treasuresFound++;
+                        showMessage(`Treasure ${gameState.treasuresFound}/${gameState.totalTreasures} found!`);
+                        
+                        if (gameState.treasuresFound === gameState.totalTreasures) {
+                            completeGame();
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Complete the game
+        function completeGame() {
+            gameState.gameComplete = true;
+            const minutes = Math.floor(gameState.currentTime / 60);
+            const seconds = gameState.currentTime % 60;
+            completionStats.textContent = `You collected ${gameState.totalTreasures} treasures in ${minutes}:${seconds.toString().padStart(2, '0')}`;
+            gameCompleteScreen.style.display = 'flex';
+            showMessage("Congratulations! You found all the treasures!");
+        }
+        
+        // Restart the game
+        restartButton.addEventListener('click', () => {
+            // Reset treasures
+            treasures.forEach(treasure => {
+                treasure.collected = false;
+            });
+            
+            // Reset game state
+            gameState.treasuresFound = 0;
+            gameState.gameComplete = false;
+            gameState.startTime = Date.now();
+            
+            // Reset player
+            resetPlayerPosition();
+            
+            // Hide completion screen
+            gameCompleteScreen.style.display = 'none';
+            
+            showMessage("New game started! Find all the treasures!");
+        });
+        
+        // Raycasting function to draw walls
+        function castRay(angle) {
+            const sin = Math.sin(angle);
+            const cos = Math.cos(angle);
+            
+            let hitWall = false;
+            let wallDistance = 0;
+            let wallX, wallY;
+            
+            // Raycasting algorithm
+            for (let depth = 0; depth < MAX_DEPTH; depth += 0.05) {
+                const testX = player.x + sin * depth;
+                const testY = player.y + cos * depth;
+                
+                // Check if we hit a wall
+                const mazeX = Math.floor(testX);
+                const mazeY = Math.floor(testY);
+                
+                if (mazeX < 0 || mazeX >= maze[0].length || mazeY < 0 || mazeY >= maze.length) {
+                    // Out of bounds
+                    hitWall = true;
+                    wallDistance = depth;
+                    wallX = testX;
+                    wallY = testY;
+                    break;
+                }
+                
+                if (maze[mazeY][mazeX] === 1) {
+                    // Hit a wall
+                    hitWall = true;
+                    wallDistance = depth;
+                    wallX = testX;
+                    wallY = testY;
+                    break;
+                }
+            }
+            
+            return { hitWall, distance: wallDistance, x: wallX, y: wallY };
+        }
+        
+        // Draw the 3D scene
+        function drawScene() {
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            // Clear the canvas
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw ceiling
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, width, height / 2);
+            
+            // Draw floor
+            ctx.fillStyle = '#16213e';
+            ctx.fillRect(0, height / 2, width, height / 2);
+            
+            // Raycasting for each column
+            for (let x = 0; x < width; x++) {
+                // Calculate ray angle
+                const rayAngle = player.angle + FOV / 2 - (x / width) * FOV;
+                
+                // Cast ray
+                const ray = castRay(rayAngle);
+                
+                if (ray.hitWall) {
+                    // Calculate wall height based on distance
+                    const distance = ray.distance * Math.cos(player.angle - rayAngle);
+                    const wallHeight = Math.min((height * WALL_HEIGHT) / distance, height * 2);
+                    
+                    // Calculate wall top and bottom
+                    const wallTop = (height / 2) - (wallHeight / 2) + (PLAYER_HEIGHT * wallHeight);
+                    const wallBottom = wallTop + wallHeight;
+                    
+                    // Determine wall color based on distance and position
+                    let wallColor;
+                    const wallX = Math.floor(ray.x);
+                    const wallY = Math.floor(ray.y);
+                    
+                    // Check which wall face we hit
+                    const isVertical = Math.abs(Math.floor(ray.x) + 0.5 - ray.x) > Math.abs(Math.floor(ray.y) + 0.5 - ray.y);
+                    
+                    if (isVertical) {
+                        // Vertical wall
+                        wallColor = `rgba(52, 152, 219, ${Math.max(0.3, 1 - ray.distance / MAX_DEPTH)})`;
+                    } else {
+                        // Horizontal wall
+                        wallColor = `rgba(41, 128, 185, ${Math.max(0.3, 1 - ray.distance / MAX_DEPTH)})`;
+                    }
+                    
+                    // Draw wall slice
+                    ctx.fillStyle = wallColor;
+                    ctx.fillRect(x, wallTop, 1, wallHeight);
+                    
+                    // Add shading at top and bottom of wall
+                    ctx.fillStyle = `rgba(0, 0, 0, ${0.3 * (1 - ray.distance / MAX_DEPTH)})`;
+                    ctx.fillRect(x, wallTop, 1, wallHeight * 0.1);
+                    ctx.fillRect(x, wallBottom - wallHeight * 0.1, 1, wallHeight * 0.1);
+                }
+            }
+            
+            // Draw treasures as glowing points
+            treasures.forEach(treasure => {
+                if (!treasure.collected) {
+                    // Calculate treasure position relative to player
+                    const dx = treasure.x - player.x;
+                    const dy = treasure.y - player.y;
+                    
+                    // Calculate distance and angle
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dx, dy) - player.angle;
+                    
+                    // Check if treasure is in field of view
+                    if (Math.abs(angle) < FOV / 2 && distance < MAX_DEPTH) {
+                        // Calculate screen position
+                        const screenX = (width / 2) + (Math.tan(angle) * width / FOV);
+                        const screenSize = Math.max(5, (50 / distance));
+                        const screenY = height / 2;
+                        
+                        // Draw treasure glow
+                        const glow = ctx.createRadialGradient(
+                            screenX, screenY, screenSize * 0.5,
+                            screenX, screenY, screenSize * 2
+                        );
+                        glow.addColorStop(0, `rgba(241, 196, 15, ${0.9 - distance/MAX_DEPTH})`);
+                        glow.addColorStop(1, 'rgba(241, 196, 15, 0)');
+                        
+                        ctx.fillStyle = glow;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, screenSize * 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Draw treasure icon
+                        ctx.fillStyle = `rgba(241, 196, 15, ${1 - distance/MAX_DEPTH})`;
+                        ctx.font = `${screenSize}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('💎', screenX, screenY);
+                    }
+                }
+            });
+            
+            // Draw crosshair
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillRect(width / 2 - 1, height / 2 - 10, 2, 20);
+            ctx.fillRect(width / 2 - 10, height / 2 - 1, 20, 2);
+        }
+        
+        // Update player movement
+        function updatePlayer() {
+            if (gameState.gameComplete) return;
+            
+            let moveX = 0;
+            let moveY = 0;
+            
+            // Handle movement keys
+            if (keys['w'] || keys['arrowup']) {
+                moveX += Math.sin(player.angle) * PLAYER_SPEED;
+                moveY += Math.cos(player.angle) * PLAYER_SPEED;
+            }
+            if (keys['s'] || keys['arrowdown']) {
+                moveX -= Math.sin(player.angle) * PLAYER_SPEED;
+                moveY -= Math.cos(player.angle) * PLAYER_SPEED;
+            }
+            if (keys['a'] || keys['arrowleft']) {
+                moveX += Math.sin(player.angle - Math.PI/2) * PLAYER_SPEED;
+                moveY += Math.cos(player.angle - Math.PI/2) * PLAYER_SPEED;
+            }
+            if (keys['d'] || keys['arrowright']) {
+                moveX += Math.sin(player.angle + Math.PI/2) * PLAYER_SPEED;
+                moveY += Math.cos(player.angle + Math.PI/2) * PLAYER_SPEED;
+            }
+            
+            // Normalize diagonal movement
+            if (moveX !== 0 && moveY !== 0) {
+                moveX *= 0.707; // 1/√2
+                moveY *= 0.707;
+            }
+            
+            // Check for wall collisions
+            const newX = player.x + moveX;
+            const newY = player.y + moveY;
+            
+            const mazeX = Math.floor(newX);
+            const mazeY = Math.floor(newY);
+            
+            if (mazeX >= 0 && mazeX < maze[0].length && mazeY >= 0 && mazeY < maze.length) {
+                if (maze[mazeY][mazeX] === 0) {
+                    player.x = newX;
+                    player.y = newY;
+                }
+            }
+            
+            // Update stats and check for treasures
+            updateStats();
+            checkTreasureCollection();
+        }
+        
+        // Game loop
+        function gameLoop() {
+            updatePlayer();
+            drawScene();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Initialize the game
+        updateCompass();
+        showMessage("Click on the game to lock mouse pointer. Use WASD to move and mouse to look around.");
+        gameLoop();
+    </script>
+</body>
+</html>
